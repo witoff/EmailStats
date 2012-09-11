@@ -1,1 +1,1 @@
-gource --highlight-all-users --seconds-per-day .1 --auto-skip-seconds 1 --max-user-speed 1000 --user-scale 1  --file-idle-time 2 --stop-at-end  --user-image-dir --max-files 200 images -i 2 --key -1920x1280 emails.gource
+gource --highlight-all-users --seconds-per-day .3 --auto-skip-seconds 1 --max-user-speed 1000 --user-scale 1  --file-idle-time 5 --stop-at-end  --user-image-dir --max-files 200 images -i 2 --key -1024x1024 emails.gource

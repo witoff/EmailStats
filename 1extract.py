@@ -1,12 +1,13 @@
 #! /usr/bin/python
 
 import os
+import sys
 import re
 import json
+import time
+from datetime import datetime
 from os.path import isdir, isfile, join
 
-#root = '/Users/%s/Library/Mail/V2/EWS-witoff@ums.jpl.nasa.gov' % os.getlogin()
-root = '/Users/%s/Library/Mail/V2/IMAP-rob@api.gy@imap.gmail.com' % os.getlogin()
 
 def getemails(path):
 	allfiles = []
@@ -22,6 +23,7 @@ class Email(object):
 	
 	def __init__(self):
 		self.mfrom = None
+		self.subject = None
 		self.to = None
 		self.cc = None
 		self.ti = None
@@ -30,22 +32,22 @@ class Email(object):
 		self.path = None
 		self.regex = re.compile('<.*?>')
 
+	def isDone(self):
+		return self.mfrom and self.subject and self.to and self.cc and self.ti and self.tt and self.date and self.path
+
 
 	def parse_emails(self, email_str):
 		return self.regex.findall(email_str)
 		
 		
 	def __str__(self):
-		return 'From: ' +  str(self.mfrom) + '\n' +\
-		'To: ' + str(self.to) + '\n' +\
-		'CC: ' + str(self.cc) + '\n' +\
-		'ti: ' + str(self.ti) + '\n' +\
-		'tt: ' + str(self.tt) + '\n' +\
-		'date: ' +  str(self.date) + '\n' +\
-		'path: ' + str(self.path)
+		obj = self.serialize()
+		desc = [("%s: %s" % (k, obj[k])) for k in obj]
+		return '\n'.join(desc)
 
 	def serialize(self):
 		return { 'to' : self.to, 
+				'subject' : self.subject,
 				'from' : self.mfrom,
 				'cc': self.cc,
 				'ti': self.ti,
@@ -53,12 +55,8 @@ class Email(object):
 				'date' : self.date,
 				'path' : self.path}
 
-
-
-
-def getAllEmails(limit=None):
-	allfiles = getemails(root)
-	print 'total files: ' , len(allfiles)
+def getAllEmails(path, limit=None):
+	allfiles = getemails(path)
 	if limit:
 		allfiles = allfiles[0:limit]
 
@@ -95,16 +93,37 @@ def getAllEmails(limit=None):
 			elif l[0:12] == 'Thread-Topic':
 				em.tt = ingest(i, lines)
 			elif l[0:4] == 'Date':
-				em.date = ingest(i, lines)
+				em.date = ingest(i, lines)[6:]
+				if em.date[-1] == ')':
+					em.date = em.date[:-11].strip()
+					em.date = datetime.strptime(em.date, '%a, %d %b %Y %H:%M:%S')
+				elif em.date[0].isdigit():
+					em.date = em.date[:-6]
+					em.date = datetime.strptime(em.date, '%d %b %Y %H:%M:%S')
+				else:
+					em.date = em.date[:-6].strip()
+					em.date = datetime.strptime(em.date, '%a, %d %b %Y %H:%M:%S')
+				em.date = int(time.mktime(em.date.timetuple()))
+			if em.isDone() or l.strip() == '':
 				break
 		emails.append(em.serialize())
+	print 'total emails: ' , len(emails)
 	return emails
 
 def main():
-	emails = getAllEmails()
-	f = file('allemails.json', 'w')
-	f.write(json.dumps(emails))
-	f.close()
+	if len(sys.argv) > 1:
+		paths = [ sys.argv[1] ]
+	else:
+		path = '/Users/%s/Library/Mail/V2/' % os.getlogin()
+		paths = [(path + m) for m in os.listdir(path) if '@' in m]
+		
+	for p in paths:
+		name = p.split('/')[-1].split('@')[0]
+		print 'Processing name: ' + name
+		emails = getAllEmails(p)
+		f = file('%s.json' % name, 'w')
+		f.write(json.dumps(emails))
+		f.close()
 
 
 if __name__ == '__main__':

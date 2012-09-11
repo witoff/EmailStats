@@ -1,9 +1,14 @@
+#! /usr/bin/python
+
 import json
+import sys
 import pprint
 import time
 from datetime import datetime
 
-data = json.loads(file('allemails2.jpl.json', 'r').read())
+assert len(sys.argv) > 1
+
+data = json.loads(file(sys.argv[1], 'r').read())
 
 f = open('emails.gource', 'w')
 
@@ -15,8 +20,12 @@ for d in data:
 	else:
 		f.write('unknown')
 	f.write('|A|')
-	if 'tt' in d:
+	if 'subject' in d:
+		f.write(str(d['subject']))
+	elif 'tt' in d:
 		f.write(str(d['tt']))
 	else:
 		f.write('unknown')
 	f.write('|\n')
+f.close()
+print 'written to gource file'

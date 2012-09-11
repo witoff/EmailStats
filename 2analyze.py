@@ -9,33 +9,17 @@ from os.path import isdir, isfile, join
 import time
 
 def main():
-	f = file('allemails.jpl.json', 'r')
+	assert len(sys.argv)>1
+	f = file(sys.argv[1], 'r')
 	emails = json.loads(f.read())
 	f.close()
-	print 'analyzing %i emails' % len(emails)
 
-	parseTime(emails)
-	fDates = file('allemails2.jpl.json', 'w')
-	fDates.write(json.dumps(emails))
-
+	print 'Analyzing %i emails' % len(emails)
 
 	#for e in emails: print e
 	doThreads(emails)
 	doSender(emails)
 	doOrgs(emails)
-
-
-def parseTime(emails):
-	for e in emails:
-		if e.get('date'):
-			try:
-				if e['date'][-1] == ')':
-					e['date'] = datetime.strptime(e['date'][6:-11].strip(), '%a, %d %b %Y %H:%M:%S')
-				else:
-					e['date'] = datetime.strptime(e['date'][6:-6].strip(), '%a, %d %b %Y %H:%M:%S')
-				e['date'] = int(time.mktime(e['date'].timetuple()))
-			except:
-				print 'exception', sys.exc_info()[0]
 
 
 def doThreads(emails):
@@ -44,6 +28,7 @@ def doThreads(emails):
 			e['ti'] = e['subject']
 	print '\nTHREAD ANALYSIS'
 	for ttype in ['ti', 'tt']:
+		print '----'
 		print 'TYPE: ', ttype
 		threads = {}
 		for e in emails: 
@@ -62,7 +47,7 @@ def doThreads(emails):
 			t_sorted = sorted(threads[t], key=lambda x: x['date'])
 			for i in range(len(t_sorted)):
 				if (i+1)<len(t_sorted):
-					deltas.append((t_sorted[i+1]['date']-t_sorted[i]['date']).total_seconds())
+					deltas.append(t_sorted[i+1]['date']-t_sorted[i]['date'])
 
 		#print 'AVERAGE DELTA: ', float(sum(deltas))/len(deltas)
 		
