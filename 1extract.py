@@ -31,9 +31,11 @@ class Email(object):
 		self.date = None
 		self.path = None
 		self.regex = re.compile('<.*?>')
+		self.id = None
+		self.reply_to = None
 
 	def isDone(self):
-		return self.mfrom and self.subject and self.to and self.cc and self.ti and self.tt and self.date and self.path
+		return self.mfrom and self.subject and self.to and self.cc and self.ti and self.tt and self.date and self.path and self.id and self.reply_to
 
 
 	def parse_emails(self, email_str):
@@ -53,7 +55,9 @@ class Email(object):
 				'ti': self.ti,
 				'tt': self.tt,
 				'date' : self.date,
-				'path' : self.path}
+				'path' : self.path, 
+				'id' : self.id,
+				'reply_to' : self.reply_to}
 
 def getAllEmails(path, limit=None):
 	allfiles = getemails(path)
@@ -104,10 +108,19 @@ def getAllEmails(path, limit=None):
 					em.date = em.date[:-6].strip()
 					em.date = datetime.strptime(em.date, '%a, %d %b %Y %H:%M:%S')
 				em.date = int(time.mktime(em.date.timetuple()))
+			elif l[0:10] == 'Message-ID':
+				em.id = em.parse_emails(ingest(i, lines))[0][1:-1]
+			elif l[0:11] == 'In-Reply-To':
+				em.reply_to = em.parse_emails(ingest(i, lines))
+				if em.reply_to:
+					em.reply_to = em.reply_to[0][1:-1]
 			if em.isDone() or l.strip() == '':
 				break
-		emails.append(em.serialize())
+		if em.date:
+			emails.append(em.serialize())
 	print 'total emails: ' , len(emails)
+
+	emails = sorted(emails, key=lambda x: x['date'])
 	return emails
 
 def main():
@@ -119,11 +132,13 @@ def main():
 		
 	for p in paths:
 		name = p.split('/')[-1].split('@')[0]
-		print 'Processing name: ' + name
+		print '\nProcessing name: ' + name
 		emails = getAllEmails(p)
-		f = file('%s.json' % name, 'w')
+		filename = '%s.json' % name
+		f = file(filename, 'w')
 		f.write(json.dumps(emails))
 		f.close()
+		print 'Wrote file: ' + filename
 
 
 if __name__ == '__main__':

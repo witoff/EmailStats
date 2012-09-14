@@ -10,7 +10,24 @@ assert len(sys.argv) > 1
 
 data = json.loads(file(sys.argv[1], 'r').read())
 
-f = open('emails.gource', 'w')
+history = {}
+def buildHistory():
+	for d in data:
+		history[d['id']] = d
+	def dig(d):
+		if 'treepath' not in d:
+			if d['reply_to'] and d['reply_to'] in history:
+				d['treepath'] = dig(history[d['reply_to']]) + '/' + d['subject']
+			else:
+				d['treepath'] = d['subject']
+		return d['treepath']
+
+	for d in data:
+		dig(d)
+	
+buildHistory()
+
+f = open(sys.argv[1].split('.')[0] + '.gource', 'w')
 
 for d in data:
 	f.write(str(d['date']))
@@ -20,7 +37,9 @@ for d in data:
 	else:
 		f.write('unknown')
 	f.write('|A|')
-	if 'subject' in d:
+	if 'treepath' in d:
+		f.write(str(d['treepath']))
+	elif 'subject' in d:
 		f.write(str(d['subject']))
 	elif 'tt' in d:
 		f.write(str(d['tt']))
@@ -28,4 +47,4 @@ for d in data:
 		f.write('unknown')
 	f.write('|\n')
 f.close()
-print 'written to gource file'
+print 'written to gource file: ' + f.name

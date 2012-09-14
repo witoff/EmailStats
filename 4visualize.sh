@@ -1,0 +1,1 @@
+gource --highlight-all-users --seconds-per-day .3 --auto-skip-seconds .3 --max-user-speed 100 --user-scale 1  --file-idle-time 10 --stop-at-end  --user-image-dir --max-files 0 images  -1024x1024 --title "Email Exchanges" --hide filenames,dirnames $1
