@@ -10,19 +10,25 @@ import time
 
 def main():
 	assert len(sys.argv)>1
+	flags = ''
+	if len(sys.argv)>2:
+		flags = sys.argv[2]
+
 	f = file(sys.argv[1], 'r')
 	emails = json.loads(f.read())
 	f.close()
 
 	print 'Analyzing %i emails' % len(emails)
 
-	#for e in emails: print e
-	doThreads(emails)
-	doSender(emails)
-	doOrgs(emails)
+	doThreads(emails, flags)
+
+	if 's' in flags:
+		doSender(emails)
+	if 'o' in flags:
+		doOrgs(emails)
 
 
-def doThreads(emails):
+def doThreads(emails, flags):
 	for e in emails:
 		if 'subject' in e:
 			e['ti'] = e['subject']
@@ -51,11 +57,18 @@ def doThreads(emails):
 
 		#print 'AVERAGE DELTA: ', float(sum(deltas))/len(deltas)
 		
+		duration = emails[-1]['date'] - emails[0]['date']
+		dod = float(sum(deltas))/duration
+		print 'Your DOD is: ' + str(dod)
+
+		if 't' not in flags:
+			break
 		print 'Thread count: ', len(threads)
 		print 'Longest thread: ', max(lens)
 		print 'Shortest thread: ', min(lens)
 		print 'avg: ', float(sum(lens))/len(lens)
 		print 'sum: ', sum(deltas)
+
 
 def doSender(emails):
 	print '\nSENDER ANALYSIS'

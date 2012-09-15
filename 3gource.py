@@ -5,6 +5,7 @@ import sys
 import pprint
 import time
 from datetime import datetime
+from random import *
 
 assert len(sys.argv) > 1
 
@@ -45,6 +46,7 @@ for d in data:
 		f.write(str(d['tt']))
 	else:
 		f.write('unknown')
+	#f.write("|%s" % "".join([hex(randrange(0, 255))[2:] for i in range(3)]))
 	f.write('|\n')
 f.close()
 print 'written to gource file: ' + f.name
