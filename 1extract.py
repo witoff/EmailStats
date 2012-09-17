@@ -127,8 +127,15 @@ def main():
 	if len(sys.argv) > 1:
 		paths = [ sys.argv[1] ]
 	else:
-		path = '/Users/%s/Library/Mail/V2/' % os.getlogin()
-		paths = [(path + m) for m in os.listdir(path) if '@' in m]
+		path = '/Users/%s/Library/Mail/' % os.getlogin()
+		def getBoxes(path):
+			return [join(path,m) for m in os.listdir(path) if '@' in m]
+		paths = getBoxes(path)
+
+		for p in os.listdir(path):
+			np = join(path,p)
+			if os.path.isdir(np):
+				paths.extend(getBoxes(np))
 		
 	for p in paths:
 		name = p.split('/')[-1].split('@')[0]
