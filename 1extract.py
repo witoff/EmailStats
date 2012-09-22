@@ -8,18 +8,10 @@ import time
 from datetime import datetime
 from os.path import isdir, isfile, join
 
-
-def getemails(path):
-	allfiles = []
-	objs = [join(path, d) for d in os.listdir(path) if d[0] != '.']
-	dirs = [d for d in objs if isdir(d)]
-	files = [f for f in objs if isfile(f) and f[-4:]=='emlx']
-	allfiles.extend(files)
-	for d in dirs: allfiles.extend(getemails(d))
-	return allfiles
-
-
 class Email(object):
+	""" Hold and format an email"""
+
+	reEmail = re.compile('<.*?>')
 	
 	def __init__(self):
 		self.mfrom = None
@@ -30,23 +22,19 @@ class Email(object):
 		self.tt = None
 		self.date = None
 		self.path = None
-		self.regex = re.compile('<.*?>')
 		self.id = None
 		self.reply_to = None
 
-	def isDone(self):
-		return self.mfrom and self.subject and self.to and self.cc and self.ti and self.tt and self.date and self.path and self.id and self.reply_to
-
+	def is_done(self):
+		obj = self.serialize()
+		for k in obj:
+			if not obj[k]: 
+				return False
+		return True
 
 	def parse_emails(self, email_str):
-		return self.regex.findall(email_str)
+		return Email.reEmail.findall(email_str)
 		
-		
-	def __str__(self):
-		obj = self.serialize()
-		desc = [("%s: %s" % (k, obj[k])) for k in obj]
-		return '\n'.join(desc)
-
 	def serialize(self):
 		return { 'to' : self.to, 
 				'subject' : self.subject,
@@ -59,22 +47,40 @@ class Email(object):
 				'id' : self.id,
 				'reply_to' : self.reply_to}
 
-def getAllEmails(path, limit=None):
-	allfiles = getemails(path)
+	def __str__(self):
+		obj = self.serialize()
+		desc = [("%s: %s" % (k, obj[k])) for k in obj]
+		return '\n'.join(desc)
+
+
+def get_emails(path):
+	""" recursively get all emails in and below this path """
+
+	items = [join(path, d) for d in os.listdir(path) if d[0] != '.']
+	dirs = [d for d in items if isdir(d)]
+	files = [f for f in items if isfile(f) and f[-4:]=='emlx']
+
+	for d in dirs: files.extend(get_emails(d))
+
+	return files
+
+def get_all_emails(path, limit=None):
+	""" return an array of all serialized emails dicts inside this path, sorted by date """
+
+	allfiles = get_emails(path)
 	if limit:
 		allfiles = allfiles[0:limit]
 
-	count = 0
 	emails = []
-	for path in allfiles:
-		count += 1
-		f = file(path, 'rb')
+	for fn in allfiles:
+		if len(emails)%100==0:
+			print 'count: ', len(emails)
 
-		lines = f.readlines()
 		em = Email()
-		em.path = path
-		if count%100==0:
-			print 'count: ', count
+		em.path = fn
+		
+		f = file(fn, 'rb')
+		lines = f.readlines()
 		for i in range(len(lines)):
 			l = lines[i]
 
@@ -84,37 +90,45 @@ def getAllEmails(path, limit=None):
 					s += ingest(i+1, lines)
 				return s
 
-			if l[0:5] == 'From:': 
+			if l.startswith('From:'): 
 				em.mfrom = em.parse_emails(ingest(i, lines))
-			elif l[0:2] == 'To':
+			elif l.startswith('To'):
 				em.to = em.parse_emails(ingest(i, lines))
-			elif l[0:2] == 'CC':
+			elif l.startswith('CC'):
 				em.cc = em.parse_emails(ingest(i, lines))
-			elif l[0:7] == 'Subject':
+			elif l.startswith('Subject'):
 				em.subject = ingest(i, lines)
-			elif l[0:12] == 'Thread-Index':
+			elif l.startswith('Thread-Index'):
 				em.ti = ingest(i, lines)
-			elif l[0:12] == 'Thread-Topic':
+			elif l.startswith('Thread-Topic'):
 				em.tt = ingest(i, lines)
-			elif l[0:4] == 'Date':
-				em.date = ingest(i, lines)[6:]
-				if em.date[-1] == ')':
-					em.date = em.date[:-11].strip()
-					em.date = datetime.strptime(em.date, '%a, %d %b %Y %H:%M:%S')
-				elif em.date[0].isdigit():
-					em.date = em.date[:-6]
-					em.date = datetime.strptime(em.date, '%d %b %Y %H:%M:%S')
+			elif l.startswith('Date'):
+				date = ingest(i, lines)[6:]
+				components = date.split()
+				if len(components)<4:
+					print 'bad date components for: %s.  Skipping entry.' % date
+					break	
+				if ',' in components[0]:
+					components = components[1:5]
 				else:
-					em.date = em.date[:-6].strip()
-					em.date = datetime.strptime(em.date, '%a, %d %b %Y %H:%M:%S')
-				em.date = int(time.mktime(em.date.timetuple()))
-			elif l[0:10] == 'Message-ID':
-				em.id = em.parse_emails(ingest(i, lines))[0][1:-1]
-			elif l[0:11] == 'In-Reply-To':
+					components = components[0:4]
+				match = ['%d', '%b', '%Y', '%H:%M:%S']
+				if len(components[2])==2:
+					match[2] = '%y'
+				if len(components[3].split(':'))==2:
+					match[3] = '%H:%M'
+
+				date = datetime.strptime(' '.join(components), ' '.join(match))
+				em.date = int(time.mktime(date.timetuple()))
+
+			elif l.startswith('Message-ID'):
+				ids = em.parse_emails(ingest(i, lines))
+				em.id = ids[0][1:-1] if ids else 'empty'
+			elif l.startswith('In-Reply-To'):
 				em.reply_to = em.parse_emails(ingest(i, lines))
 				if em.reply_to:
 					em.reply_to = em.reply_to[0][1:-1]
-			if em.isDone() or l.strip() == '':
+			if em.is_done() or l.strip() == '':
 				break
 		if em.date:
 			emails.append(em.serialize())
@@ -139,8 +153,8 @@ def main():
 		
 	for p in paths:
 		name = p.split('/')[-1].split('@')[0]
-		print '\nProcessing name: ' + name
-		emails = getAllEmails(p)
+		print '\nProcessing email account: ' + name
+		emails = get_all_emails(p)
 		filename = '%s.json' % name
 		f = file(filename, 'w')
 		f.write(json.dumps(emails))

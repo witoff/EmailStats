@@ -1,12 +1,12 @@
 #! /usr/bin/python
 
-import os
 import sys
 import re
 import json
 from datetime import datetime
-from os.path import isdir, isfile, join
 import time
+import os
+from os.path import isdir, isfile, join
 
 def main():
 	assert len(sys.argv)>1
