@@ -10,9 +10,11 @@ from os.path import isdir, isfile, join
 
 def main():
 	assert len(sys.argv)>1
+
 	flags = ''
 	if len(sys.argv)>2:
 		flags = sys.argv[2]
+
 
 	f = file(sys.argv[1], 'r')
 	emails = json.loads(f.read())
@@ -20,15 +22,14 @@ def main():
 
 	print 'Analyzing %i emails' % len(emails)
 
-	doThreads(emails, flags)
-
+	do_threads(emails, 't' in flags)
 	if 's' in flags:
-		doSender(emails)
+		do_sender(emails)
 	if 'o' in flags:
-		doOrgs(emails)
+		do_orgs(emails)
 
 
-def doThreads(emails, flags):
+def do_threads(emails, do_detailed=False):
 	for e in emails:
 		if 'subject' in e:
 			e['ti'] = e['subject']
@@ -61,7 +62,7 @@ def doThreads(emails, flags):
 		dod = float(sum(deltas))/duration
 		print 'Your DOD is: ' + str(dod)
 
-		if 't' not in flags:
+		if not do_detailed:
 			break
 		print 'Thread count: ', len(threads)
 		print 'Longest thread: ', max(lens)
@@ -70,7 +71,7 @@ def doThreads(emails, flags):
 		print 'sum: ', sum(deltas)
 
 
-def doSender(emails):
+def do_sender(emails):
 	print '\nSENDER ANALYSIS'
 	senders = {}
 	for e in emails: 
@@ -87,7 +88,7 @@ def doSender(emails):
 	for e in sentby_ordered:
 		print len(e[1]), e[0]
 
-def doOrgs(emails):
+def do_orgs(emails):
 	fromto = {}
 	regex = re.compile('.*@(.*)')
 	for e in emails:
