@@ -32,3 +32,4 @@ Crunch and visualize stats from your local Apple Mail email accounts.
 5.  Record.sh: Takes a .gource file and creates an output mp4 file for uploading to youtube and showing your friends
   * running: ./5record.sh email_file.gource
     * _email_file.gource_: A gource formatted file of an email account
+
